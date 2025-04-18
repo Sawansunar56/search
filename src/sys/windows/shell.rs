@@ -4,7 +4,7 @@ use std::{
 };
 use windows::core::{PCWSTR, HSTRING};
 use windows::Win32::{
-    UI::Shell::ShellExecuteW,
+    UI::Shell::{ShellExecuteW, ILCreateFromPathW, ILFree, SHOpenFolderAndSelectItems},
     UI::WindowsAndMessaging::SHOW_WINDOW_CMD,
     Foundation::HWND,
 };
@@ -27,4 +27,17 @@ pub fn edit_file(path: &Path) -> io::Result<()> {
     } else {
         return Ok(());
     }
+}
+
+pub fn open_containing_folder(path: &Path) -> Result<(), String> {
+    let path = HSTRING::from(path.as_os_str());
+    let idl = unsafe { ILCreateFromPathW(&path) };
+    let result = unsafe {
+        SHOpenFolderAndSelectItems(
+            idl,
+            None,
+            0)
+    };
+    unsafe { ILFree(Some(idl)) };
+    return result.map_err(|err| err.message().to_string());
 }

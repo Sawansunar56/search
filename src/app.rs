@@ -22,7 +22,7 @@ use std::{
 
 use rfd::FileDialog;
 
-use crate::{editor::*, help::*, hotkeys::*, search::*, settings::*};
+use crate::{editor::*, help::*, hotkeys::*, search::*, settings::*, sys};
 
 pub struct App {
     default_paths: String,
@@ -585,6 +585,15 @@ impl App {
             if ui.menu_item_config("Copy Full Path").build() {
                 ui.set_clipboard_text(full_path.as_ref());
             }
+
+            if ui.menu_item_config("Open Containing Folder").build() {
+                let path = Path::new(full_path.as_ref());
+                if let Err(err) = sys::shell::open_containing_folder(path) {
+                    let msg = format!("Failed to open containing folder of '{}' with the shell, err: {:?}", full_path, err);
+                    println!("{}", msg);
+                    tab.error_message = Some(msg);
+                }
+            }
         }
 
         stack.end();
@@ -960,7 +969,7 @@ impl App {
                 if let Some((file_path, line_number)) = self.commands.pop_front() {
                     if !self.settings.settings.use_custom_editor() {
                         let path = Path::new(&file_path);
-                        if let Err(err) = crate::sys::shell::edit_file(&path) {
+                        if let Err(err) = sys::shell::edit_file(&path) {
                             let msg = format!("Failed to edit '{}' with the shell, err: {:?}", file_path, err);
                             println!("{}", msg);
                             if let Some(tab) = self.tabs.get_mut(self.selected_tab) {
@@ -1016,7 +1025,7 @@ impl App {
             let files = std::mem::take(&mut self.drag_files);
             let files: Vec<&str> = files.iter().map(|file| file.as_str()).collect();
 
-            crate::sys::enter_drag_drop(files.as_slice());
+            sys::enter_drag_drop(files.as_slice());
 
             // It's unclear whether we actually have to do that, but it seems so.
             // Overall, we never receive the event telling us the mouse button was down, so imgui
